@@ -1,5 +1,7 @@
 # Lua-Projects
-Random projects I've made, all compiled into one package while being easy to switch between. These were made over the course of 3 years (2021-09-05 to 2024-08-29).
+Random projects I've made, all compiled into one package while being easy to switch between. These were made over the course of 3 years (2021-09-05 to 2024-08-29). 
+
+All projects run off the LÖVE framework, feels free to take the code and translate it into whatever language you'd like, it's simply there to be used for graphics with minimal need for LOVE-specific functions.
 
 Feel free to use parts of the code for your own projects, these are some explanations behind them: 
 
