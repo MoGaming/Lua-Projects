@@ -33,8 +33,8 @@ function love.draw()
   end
 end
 
-function love.key(key)
+function love.keypressed(key)
   if currentData.keypressed then
-    module.keypressed( key )
+    currentData.keypressed( key )
   end
 end
