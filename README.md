@@ -15,6 +15,10 @@ Although it isn't as prefect as I'd like it to be due to complications with squa
 * One of the folders included renders a "Mandelbrot set" with a quick pass over, the user can zoom and move around the camera and render more and more higher resolution images to see how detailed the fractal gets. Disable the "Mandelbrot set" to render a "Lyapunov fractal".
 Some of the code was based on other implementations of the code, I have no use for this one in particular outside of rendering it as I only made it because I was bored and heard others had trouble with it, it took me around an hour or two to code.
 
+* OBJ Parser, converts a OBJ file into a mesh to render and spin, this uses matrix multiplication to rotate the mesh via software.
+I provided 4 files, "render.obj" a cube and a collection of 3 files based on "full slug.obj", a high triangle slug-being, "full slug small.obj" and "full slug smaller.obj" being smaller triangle counts.
+These were all made in blender and are free to reuse for whatever purpose you need.
+
 Smaller Projects, these are also some quick explanations:
 
 * DFA Solver is still WIP but I plan to automatically generate valid solutions to state diagrams, it was made while talking to a couple of my peers about DFAs, something that at the time I had no clue about.
