@@ -16,7 +16,7 @@ Although it isn't as prefect as I'd like it to be due to complications with squa
 Some of the code was based on other implementations of the code, I have no use for this one in particular outside of rendering it as I only made it because I was bored and heard others had trouble with it, it took me around an hour or two to code.
 
 * OBJ Parser, converts a OBJ file into a mesh to render and spin, this uses matrix multiplication to rotate the mesh using the code I wrote.
-I provided 4 files, "render.obj" a cube and a collection of 3 files based on "full slug.obj", a high triangle slug-being, "full slug small.obj" and "full slug smaller.obj" being smaller triangle counts.
+I provided 5 files, "render.obj" a cube, "fumo.obj" a 3D scan of a Cirno Plushie from Touhou, and a collection of 3 files based on "full slug.obj", a high triangle slug-being, "full slug small.obj" and "full slug smaller.obj" being smaller triangle counts.
 These files were made in Blender, they're free to reuse for whatever purpose you need. Not all contents of the OBJ file are used, like normals and texture, this will be changed in the future if I come back to the project.
 
 Smaller Projects, these are also some quick explanations:
