@@ -1,12 +1,6 @@
 local module = {}
 
--- disable graph
--- display median, mean, mode
--- display the 3 quartile lines
--- display IQR Box (Q3-Q1) 
--- display lower and upper whiskers (inlier range) and outlier red zone (marked by red cross hatching)
--- display min, max, IQRmin, IQRmax
--- display IQR average, mean, mode
+-- currently only allows for the usecase of line graphs that display the difference of a number compared to others, e.g. X appears below Y in height if X < Y
 
 local pow = math.pow
 local sqrt = math.sqrt
@@ -15,10 +9,27 @@ local mouseX, mouseY = 0, 0
 local currentDeltaFrame = 1/60
 local totalDeltaFrame = 0
 
+local width, height 
+local average, mode, max, min, total, q1, median, q3
+local iqr, lowerwhisker, upperwhisker
+local dataSet
+
+local Tmidpoint = 0-- top midpoint
+local Bmidpoint = 0-- bottom midpoint
+local Mwidth = 0-- marigin width
+
 local path = (...):match('(.+)%.[^.]+$') 
 
 local function magnitude(X, Y, Z)
   return sqrt(pow(X, 2) + pow(Y, 2) + pow(Z, 2))
+end
+
+local function cloneTable(tabl)
+  local clone = {}
+  for i, v in pairs(tabl) do
+    clone[i] = v
+  end
+  return clone
 end
 
 local function splitString(text, identifier)
@@ -66,7 +77,8 @@ local function getMedian(dataSet)
   end
 end
 
-local function getStatisticsOnTable(dataSet)
+local function getStatisticsOnTable(_dataSet)
+  local dataSet = cloneTable(_dataSet)
   local average, median, mode = 0, 0, 0
   local total, min, max = 0, 0, 0
   local quartiles = {{}, {}} -- q1 and q3
@@ -92,7 +104,7 @@ local function getStatisticsOnTable(dataSet)
   average = total/#dataSet
   mode = min
   for value, frequency in pairs(frequencyTable) do
-    if frequencyTable[value] < frequency then
+    if frequencyTable[value] > frequencyTable[mode] then
       mode = value
     end
   end
@@ -100,8 +112,17 @@ local function getStatisticsOnTable(dataSet)
 end
 
 function module.load()
-  local dataSet = processDataFile("data.txt")
-  print(getStatisticsOnTable(dataSet))
+  width, height = love.graphics.getDimensions( )
+  dataSet = processDataFile("data.txt")
+  average, mode, max, min, total, q1, median, q3 = getStatisticsOnTable(dataSet)
+  iqr = q3 - q1
+  lowerwhisker, upperwhisker = q1 - 1.5*iqr, q3 + 1.5*iqr
+  print(average, mode, max, min, total, q1, median, q3)
+  print(iqr, lowerwhisker, upperwhisker)
+  print("Finish Proccessing Data")
+  Tmidpoint = height/2 - 150 -- top midpoint
+  Bmidpoint = height/2 + 150 -- bottom midpoint
+  Mwidth = width - 150 -- marigin width
 end
 
 function module.keypressed( key )
@@ -114,11 +135,43 @@ function module.update(delta)
   mouseX, mouseY = love.mouse.getPosition() 
 end
 
+function renderGraph()
+  love.graphics.clear()
+  local lines = {}
+  for index, point in pairs(dataSet) do
+    if point == mode then
+      love.graphics.setColor(0, 0, 1)
+    else
+      love.graphics.setColor(1, 1, 1)
+    end
+    local x, y = 30 + Mwidth*index/#dataSet, height - (30 + (height - 60)*point/max)
+    table.insert(lines, x)
+    table.insert(lines, y)
+    love.graphics.circle("fill", x, y, 5)
+  end
+  love.graphics.line( unpack(lines) )
+  love.graphics.setColor(0, 1, 0)  
+  love.graphics.line(30 + Mwidth*median/max, Tmidpoint, 30 + Mwidth*median/max, Bmidpoint)
+  love.graphics.setColor(1, 0, 0)  
+  love.graphics.line(30 + Mwidth*upperwhisker/max, Tmidpoint, 30 + Mwidth*upperwhisker/max, Bmidpoint)
+  love.graphics.line(30 + Mwidth*lowerwhisker/max, Tmidpoint, 30 + Mwidth*lowerwhisker/max, Bmidpoint)
+  love.graphics.line(30 + Mwidth*upperwhisker/max, height/2, 30 + Mwidth*lowerwhisker/max, height/2)
+  love.graphics.rectangle("line", 30 + Mwidth*q1/max, height/2 - 150, (30 + Mwidth*q3/max) - (30 + Mwidth*q1/max), 300)
+  love.graphics.setColor(0, 0, 0)
+end
+
 function module.draw()
   love.graphics.setBackgroundColor(1,1,1)
-  
-  local str = "FPS: "..love.timer.getFPS().." ("..string.len(tostring(currentDeltaFrame))..", "..currentDeltaFrame..")"
-  love.graphics.print(str)
+  renderGraph()
+  love.graphics.setCanvas(canvas)
+  love.graphics.setColor(0, 1, 0)
+  local deltaRate = tostring(currentDeltaFrame)
+  if string.len(deltaRate) < 20 then
+    for i=string.len(deltaRate), 20 do
+      deltaRate = deltaRate.."0"
+    end
+  end
+  love.graphics.print("FPS: "..love.timer.getFPS().." ("..currentDeltaFrame..")")
 end
 
 return module
