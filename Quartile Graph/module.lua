@@ -1,7 +1,5 @@
 local module = {}
 
--- currently only allows for the usecase of line graphs that display the difference of a number compared to others, e.g. X appears below Y in height if X < Y
-
 local pow = math.pow
 local sqrt = math.sqrt
 
@@ -9,16 +7,22 @@ local mouseX, mouseY = 0, 0
 local currentDeltaFrame = 1/60
 local totalDeltaFrame = 0
 
-local width, height 
+local width, height
 local average, mode, max, min, total, q1, median, q3
 local iqr, lowerwhisker, upperwhisker
 local dataSet
 
-local Tmidpoint = 0-- top midpoint
-local Bmidpoint = 0-- bottom midpoint
-local Mwidth = 0-- marigin width
+local Mwidth = 0 -- margin width (usable horizontal space)
+local Mheight = 0 -- margin height (usable vertical space)
+local margin = 30
 
-local path = (...):match('(.+)%.[^.]+$') 
+local boxColumnWidth = 100 -- width reserved for the vertical box plot
+local boxColumnGap = 40    -- gap between the line graph and the box plot
+local boxWidth = 60        -- width of the box itself within its column
+local graphWidth = 0       -- width available to the line graph (Mwidth minus the box column)
+local boxCenterX = 0       -- x position of the box plot's centre line
+
+local path = (...):match('(.+)%.[^.]+$')
 
 local function magnitude(X, Y, Z)
   return sqrt(pow(X, 2) + pow(Y, 2) + pow(Z, 2))
@@ -51,10 +55,10 @@ end
 local function processDataFile(fileName)
   print("Started Processing", fileName)
   local dataSet = {}
-  
-  local str, size = love.filesystem.read(path.."/"..fileName) -- read file 
+
+  local str, size = love.filesystem.read(path.."/"..fileName) -- read file
   local lines = splitString(str, "\n") -- split file by lines
-  
+
   for index, line in pairs(lines) do
     local data = splitString(line, ",")
     for i=1, #data do
@@ -63,7 +67,7 @@ local function processDataFile(fileName)
       end
     end
   end
-  
+
   print("Finished Processing", fileName)
   return dataSet
 end
@@ -83,7 +87,7 @@ local function getStatisticsOnTable(_dataSet)
   local total, min, max = 0, 0, 0
   local quartiles = {{}, {}} -- q1 and q3
   local frequencyTable = {}
-  median = getMedian(dataSet)
+  median = getMedian(dataSet) -- sorts dataSet as a side effect
   min = dataSet[1]
   max = dataSet[#dataSet]
   if #dataSet % 2 == 1 then -- Uses "John Tukey's hinges" method
@@ -111,67 +115,103 @@ local function getStatisticsOnTable(_dataSet)
   return average, mode, max, min, total, quartiles[1], median, quartiles[2]
 end
 
+local function valueToY(point)
+  return height - (margin + Mheight * (point - min) / (max - min))
+end
+
+local function indexToX(index)
+  if #dataSet <= 1 then return margin end
+  return margin + graphWidth * (index - 1) / (#dataSet - 1)
+end
+
 function module.load()
-  width, height = love.graphics.getDimensions( )
+  width, height = love.graphics.getDimensions()
   dataSet = processDataFile("data.txt")
   average, mode, max, min, total, q1, median, q3 = getStatisticsOnTable(dataSet)
   iqr = q3 - q1
   lowerwhisker, upperwhisker = q1 - 1.5*iqr, q3 + 1.5*iqr
+  -- clamp whiskers to the actual data range so they don't get drawn off-chart
+  lowerwhisker = math.max(lowerwhisker, min)
+  upperwhisker = math.min(upperwhisker, max)
   print(average, mode, max, min, total, q1, median, q3)
   print(iqr, lowerwhisker, upperwhisker)
-  print("Finish Proccessing Data")
-  Tmidpoint = height/2 - 150 -- top midpoint
-  Bmidpoint = height/2 + 150 -- bottom midpoint
-  Mwidth = width - 150 -- marigin width
+  print("Finish Processing Data")
+  Mwidth = width - margin*2   -- usable horizontal space
+  Mheight = height - margin*2 -- usable vertical space
+  graphWidth = Mwidth - boxColumnGap - boxColumnWidth
+  boxCenterX = margin + graphWidth + boxColumnGap + boxColumnWidth/2
 end
 
 function module.keypressed( key )
-  
+
 end
 
 function module.update(delta)
   currentDeltaFrame = delta
   totalDeltaFrame = totalDeltaFrame + delta
-  mouseX, mouseY = love.mouse.getPosition() 
+  mouseX, mouseY = love.mouse.getPosition()
 end
 
-function renderGraph()
-  love.graphics.clear()
+local function renderLineGraph()
+  love.graphics.setColor(1, 1, 1)
   local lines = {}
-  for index, point in pairs(dataSet) do
+  for index, point in ipairs(dataSet) do
+    table.insert(lines, indexToX(index))
+    table.insert(lines, valueToY(point))
+  end
+  if #lines >= 4 then
+    love.graphics.line(unpack(lines))
+  end
+  for index, point in ipairs(dataSet) do
     if point == mode then
       love.graphics.setColor(0, 0, 1)
     else
       love.graphics.setColor(1, 1, 1)
     end
-    local x, y = 30 + Mwidth*index/#dataSet, height - (30 + (height - 60)*point/max)
-    table.insert(lines, x)
-    table.insert(lines, y)
-    love.graphics.circle("fill", x, y, 5)
+    love.graphics.circle("fill", indexToX(index), valueToY(point), 5)
   end
-  love.graphics.line( unpack(lines) )
-  love.graphics.setColor(0, 1, 0)  
-  love.graphics.line(30 + Mwidth*median/max, Tmidpoint, 30 + Mwidth*median/max, Bmidpoint)
-  love.graphics.setColor(1, 0, 0)  
-  love.graphics.line(30 + Mwidth*upperwhisker/max, Tmidpoint, 30 + Mwidth*upperwhisker/max, Bmidpoint)
-  love.graphics.line(30 + Mwidth*lowerwhisker/max, Tmidpoint, 30 + Mwidth*lowerwhisker/max, Bmidpoint)
-  love.graphics.line(30 + Mwidth*upperwhisker/max, height/2, 30 + Mwidth*lowerwhisker/max, height/2)
-  love.graphics.rectangle("line", 30 + Mwidth*q1/max, height/2 - 150, (30 + Mwidth*q3/max) - (30 + Mwidth*q1/max), 300)
+end
+
+local function renderBoxPlot()
+  local left = boxCenterX - boxWidth/2
+  local boxTop = valueToY(q3)
+  local boxBottom = valueToY(q1)
+  local medianY = valueToY(median)
+  local upperY = valueToY(upperwhisker)
+  local lowerY = valueToY(lowerwhisker)
+  local capHalf = boxWidth/2 * 0.5
+
+  -- Whisker stems (box edge to whisker cap)
+  love.graphics.setColor(0, 0, 0)
+  love.graphics.line(boxCenterX, boxTop, boxCenterX, upperY)
+  love.graphics.line(boxCenterX, boxBottom, boxCenterX, lowerY)
+
+  -- Whisker caps
+  love.graphics.line(boxCenterX - capHalf, upperY, boxCenterX + capHalf, upperY)
+  love.graphics.line(boxCenterX - capHalf, lowerY, boxCenterX + capHalf, lowerY)
+
+  -- Box (Q1 to Q3)
+  love.graphics.setColor(0, 1, 0, 0.25)
+  love.graphics.rectangle("fill", left, boxTop, boxWidth, boxBottom - boxTop)
+  love.graphics.setColor(0, 0, 0)
+  love.graphics.rectangle("line", left, boxTop, boxWidth, boxBottom - boxTop)
+
+  -- Median line
+  love.graphics.setColor(1, 0, 0)
+  love.graphics.line(left, medianY, left + boxWidth, medianY)
+end
+
+local function renderGraph()
+  love.graphics.setBackgroundColor(0.5,0.5,1)
+  renderLineGraph()
+  renderBoxPlot()
   love.graphics.setColor(0, 0, 0)
 end
 
 function module.draw()
-  love.graphics.setBackgroundColor(1,1,1)
   renderGraph()
-  love.graphics.setCanvas(canvas)
   love.graphics.setColor(0, 1, 0)
-  local deltaRate = tostring(currentDeltaFrame)
-  if string.len(deltaRate) < 20 then
-    for i=string.len(deltaRate), 20 do
-      deltaRate = deltaRate.."0"
-    end
-  end
-  love.graphics.print("FPS: "..love.timer.getFPS().." ("..currentDeltaFrame..")")
+  love.graphics.print(string.format("FPS: %d (%.5f)", love.timer.getFPS(), currentDeltaFrame))
 end
 
 return module
